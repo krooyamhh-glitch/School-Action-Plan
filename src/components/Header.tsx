@@ -8,7 +8,8 @@ import {
   DownloadCloud, 
   LogOut,
   Bell,
-  Menu
+  Menu,
+  Database
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -20,6 +21,7 @@ interface HeaderProps {
   onOpenPhpModal: () => void;
   onToggleSidebar: () => void;
   onLogout: () => void;
+  onNavigateToSuperAdmin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenPhpModal,
   onToggleSidebar,
   onLogout,
+  onNavigateToSuperAdmin,
 }) => {
   return (
     <header className="no-print sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm sm:px-6">
@@ -78,6 +81,27 @@ export const Header: React.FC<HeaderProps> = ({
           <Calendar className="h-3.5 w-3.5 text-amber-600" />
           <span>ปีงบประมาณ พ.ศ. {activeFiscalYear.year}</span>
         </div>
+
+        {school.isActive === false && (
+          <div className="flex items-center gap-1 rounded-full border border-rose-300 bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-700 animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>สถานะ: ระงับการใช้งาน</span>
+          </div>
+        )}
+
+        {/* Super Admin Quick Button */}
+        {onNavigateToSuperAdmin && (
+          <button
+            id="btn-header-super-admin"
+            type="button"
+            onClick={onNavigateToSuperAdmin}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 px-2.5 py-1.5 text-xs font-bold text-amber-900 transition-colors shadow-xs"
+            title="ศูนย์ควบคุม Super Admin (จัดการ MySQL & โรงเรียน)"
+          >
+            <Database className="h-4 w-4 text-amber-600" />
+            <span className="hidden md:inline">Super Admin</span>
+          </button>
+        )}
 
         {/* cPanel / PHP export quick button */}
         <button

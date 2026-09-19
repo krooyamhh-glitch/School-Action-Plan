@@ -8,11 +8,30 @@
 SET FOREIGN_KEY_CHECKS = 0;
 SET NAMES utf8mb4;
 
--- 1. ตารางข้อมูลโรงเรียน (schools)
+-- 0. ตารางผู้ดูแลระบบส่วนกลาง (super_admins)
+DROP TABLE IF EXISTS `super_admins`;
+CREATE TABLE `super_admins` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL UNIQUE COMMENT 'ชื่อผู้ใช้งาน Super Admin',
+  `password_hash` VARCHAR(255) NOT NULL COMMENT 'รหัสผ่านแฮช',
+  `full_name` VARCHAR(150) NOT NULL COMMENT 'ชื่อ-นามสกุล',
+  `email` VARCHAR(100) DEFAULT NULL,
+  `phone` VARCHAR(50) DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ตารางผู้ดูแลระบบส่วนกลาง Super Admin';
+
+-- 1. ตารางข้อมูลโรงเรียน (schools) - รองรับ Multi-Tenant และรหัสสมัคร SMIS 8 หลัก
 DROP TABLE IF EXISTS `schools`;
 CREATE TABLE `schools` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `school_code` VARCHAR(20) NOT NULL COMMENT 'รหัสสถานศึกษา 10 หลัก',
+  `smis_code` VARCHAR(8) NOT NULL COMMENT 'รหัสสมัคร SMIS 8 หลัก สำหรับเปิดใช้งาน',
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1 COMMENT 'สถานะ: 1=เปิดใช้งาน, 0=ปิด/ระงับการใช้งาน',
+  `school_key` VARCHAR(50) NOT NULL COMMENT 'School ID / Tenant Key ป้องกันข้อมูลชนกัน',
+  `admin_username` VARCHAR(50) NOT NULL DEFAULT 'admin' COMMENT 'ID ผู้ดูแลระบบของโรงเรียน',
+  `admin_password_plain` VARCHAR(100) DEFAULT '123456' COMMENT 'รหัสผ่านเข้าใช้งานของโรงเรียน',
+  `admin_password_hash` VARCHAR(255) DEFAULT NULL COMMENT 'รหัสผ่านแฮช',
   `name` VARCHAR(255) NOT NULL COMMENT 'ชื่อโรงเรียน',
   `address` VARCHAR(255) DEFAULT NULL COMMENT 'ที่อยู่ / หมู่บ้าน',
   `subdistrict` VARCHAR(100) DEFAULT NULL COMMENT 'ตำบล / แขวง',
@@ -26,11 +45,14 @@ CREATE TABLE `schools` (
   `phone` VARCHAR(50) DEFAULT NULL COMMENT 'เบอร์โทรศัพท์',
   `email` VARCHAR(100) DEFAULT NULL COMMENT 'อีเมล',
   `logo_url` TEXT DEFAULT NULL COMMENT 'โลโก้โรงเรียน',
+  `notes` TEXT DEFAULT NULL COMMENT 'หมายเหตุ / บันทึกการเปิดใช้งาน',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `idx_school_code` (`school_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ตารางข้อมูลพื้นฐานโรงเรียน';
+  UNIQUE KEY `idx_school_code` (`school_code`),
+  UNIQUE KEY `idx_smis_code` (`smis_code`),
+  UNIQUE KEY `idx_school_key` (`school_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='ตารางข้อมูลพื้นฐานโรงเรียน Multi-Tenant';
 
 -- 2. ตารางปีงบประมาณ (fiscal_years)
 DROP TABLE IF EXISTS `fiscal_years`;

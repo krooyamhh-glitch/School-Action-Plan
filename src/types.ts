@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'director' | 'teacher';
+export type UserRole = 'superadmin' | 'admin' | 'director' | 'teacher';
 
 export interface User {
   id: number;
@@ -17,19 +17,48 @@ export interface User {
 export interface School {
   id: number;
   schoolCode: string;
+  smisCode?: string; // รหัสสมัคร SMIS 8 หลักสำหรับเปิดใช้งาน
+  isActive?: boolean; // สถานะเปิด/ปิดการใช้งาน
+  schoolKey?: string; // ID ประจำโรงเรียนป้องกันข้อมูลชนกัน (Tenant Key)
+  adminUsername?: string; // ID บัญชีผู้ดูแลโรงเรียน
+  adminPasswordPlain?: string; // รหัสผ่านของโรงเรียน
   name: string;
-  address: string;
-  subdistrict: string;
-  district: string;
-  province: string;
-  zipcode: string;
-  affiliation: string; // e.g. สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)
-  educationArea: string; // e.g. สำนักงานเขตพื้นที่การศึกษาประถมศึกษาขอนแก่น เขต 1
-  fiscalYear: number; // e.g. 2568
-  directorName: string;
-  phone: string;
-  email: string;
-  logoUrl: string;
+  address?: string;
+  subdistrict?: string;
+  district?: string;
+  province?: string;
+  zipcode?: string;
+  affiliation?: string; // e.g. สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)
+  educationArea?: string; // e.g. สำนักงานเขตพื้นที่การศึกษาประถมศึกษาขอนแก่น เขต 1
+  fiscalYear?: number; // e.g. 2568
+  directorName?: string;
+  phone?: string;
+  email?: string;
+  logoUrl?: string;
+  notes?: string;
+  studentCount?: number;
+  projectCount?: number;
+  totalBudget?: number;
+}
+
+export interface DatabaseConfig {
+  host: string;
+  port: number;
+  dbname: string;
+  user: string;
+  pass: string;
+}
+
+export interface DatabaseStatus {
+  connected: boolean;
+  error?: string | null;
+  host: string;
+  port: number;
+  dbname: string;
+  user: string;
+  server_version?: string;
+  table_count?: number;
+  tables?: Array<{ name: string; records: number }>;
 }
 
 export interface FiscalYear {

@@ -73,7 +73,7 @@ export function exportToPdf(
   doc.save(`${fileName}.pdf`);
 }
 
-function sqlEscape(val: string): string {
+function sqlEscape(val?: string | null): string {
   if (!val) return '';
   return val.split("'").join("''");
 }

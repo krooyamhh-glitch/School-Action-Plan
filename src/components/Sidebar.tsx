@@ -16,7 +16,8 @@ import {
   LogOut,
   DownloadCloud,
   X,
-  Bot
+  Bot,
+  Database
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -34,7 +35,8 @@ export type ActiveTab =
   | 'action_plan'
   | 'reports'
   | 'settings'
-  | 'users';
+  | 'users'
+  | 'super_admin';
 
 interface SidebarProps {
   activeTab: ActiveTab;
@@ -77,6 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: '12. รายงาน', icon: FileText },
     { id: 'settings', label: '13. ตั้งค่าระบบ', icon: Settings },
     { id: 'users', label: '14. ผู้ใช้งาน', icon: ShieldAlert },
+    { id: 'super_admin', label: '15. Super Admin (MySQL & โรงเรียน)', icon: Database, badge: '8 หลัก' },
   ];
 
   return (

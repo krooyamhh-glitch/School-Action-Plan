@@ -39,6 +39,7 @@ import { ActionPlanView } from './components/ActionPlanView';
 import { ReportsView } from './components/ReportsView';
 import { SettingsView } from './components/SettingsView';
 import { UsersView } from './components/UsersView';
+import { SuperAdminView } from './components/SuperAdminView';
 import { PhpPackageModal } from './components/PhpPackageModal';
 import { Lock, LogIn, Building2 } from 'lucide-react';
 
@@ -295,6 +296,7 @@ export default function App() {
         onOpenPhpModal={() => setIsPhpModalOpen(true)}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onLogout={handleLogout}
+        onNavigateToSuperAdmin={() => setActiveTab('super_admin')}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -313,6 +315,29 @@ export default function App() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto">
+            {school.isActive === false && activeTab !== 'super_admin' && (
+              <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-900 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 font-bold shrink-0">
+                    !
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold">สถานศึกษาถูกระงับการใช้งานชั่วคราว (Inactive)</h4>
+                    <p className="text-xs text-rose-600">
+                      Super Admin ได้ระงับการใช้งานโรงเรียนนี้ เพื่อความปลอดภัยข้อมูลจึงถูกล็อกการบันทึก
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('super_admin')}
+                  className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shrink-0"
+                >
+                  เปิดหน้า Super Admin เพื่อจัดการ
+                </button>
+              </div>
+            )}
+
             {activeTab === 'dashboard' && (
               <DashboardView
                 school={school}
@@ -458,6 +483,15 @@ export default function App() {
                 users={users}
                 currentUser={currentUser}
                 onUpdateUsers={(updated) => setUsers(updated)}
+              />
+            )}
+
+            {activeTab === 'super_admin' && (
+              <SuperAdminView
+                currentSchool={school}
+                onSelectSchool={(selected) => {
+                  setSchool(selected);
+                }}
               />
             )}
           </div>
