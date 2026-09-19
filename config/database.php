@@ -13,20 +13,26 @@ define('DB_CHARSET', 'utf8mb4');
 
 class Database {
     private static ?PDO $instance = null;
+    public static ?string $connectionError = null;
 
-    public static function getConnection(): PDO {
-        if (self::$instance === null) {
+    public static function isConnected(): bool {
+        return self::getConnection() !== null;
+    }
+
+    public static function getConnection(): ?PDO {
+        if (self::$instance === null && self::$connectionError === null) {
             $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
+                PDO::ATTR_TIMEOUT            => 2,
             ];
             try {
                 self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
             } catch (PDOException $e) {
-                die("เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล: " . $e->getMessage() . 
-                    "<br>กรุณาตรวจสอบการตั้งค่าในไฟล์ <code>config/database.php</code>");
+                self::$connectionError = $e->getMessage();
+                return null;
             }
         }
         return self::$instance;

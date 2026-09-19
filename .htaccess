@@ -1,0 +1,16 @@
+# Apache Configuration for PHP Web Server
+DirectoryIndex index.php index.html
+
+# Charset
+AddDefaultCharset UTF-8
+
+# Prevent directory listing
+Options -Indexes
+
+# PHP Settings
+<IfModule mod_php.c>
+    php_value upload_max_filesize 20M
+    php_value post_max_size 25M
+    php_value max_execution_time 300
+    php_value default_charset "UTF-8"
+</IfModule>
