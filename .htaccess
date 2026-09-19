@@ -1,11 +1,19 @@
-# Apache Configuration for PHP Web Server
+# Web Server Configuration for PHP Application (Apache & LiteSpeed)
 DirectoryIndex index.php index.html
 
 # Charset
 AddDefaultCharset UTF-8
 
 # Prevent directory listing
-Options -Indexes
+Options -Indexes +FollowSymLinks
+
+# Rewrite rules
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [L,QSA]
+</IfModule>
 
 # PHP Settings
 <IfModule mod_php.c>
@@ -14,3 +22,4 @@ Options -Indexes
     php_value max_execution_time 300
     php_value default_charset "UTF-8"
 </IfModule>
+

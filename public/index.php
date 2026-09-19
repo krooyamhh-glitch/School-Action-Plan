@@ -1,10 +1,11 @@
 <?php
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
-
-if (!empty($_SESSION['user_id'])) {
-    header('Location: /public/dashboard.php');
+/**
+ * Safe entry point if Web Server DocumentRoot is configured to /public
+ */
+if (file_exists(__DIR__ . '/../dashboard.php')) {
+    require_once __DIR__ . '/../dashboard.php';
 } else {
-    header('Location: /public/login.php');
+    header('Location: ../index.php');
 }
 exit;
+
