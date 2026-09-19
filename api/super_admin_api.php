@@ -2,23 +2,38 @@
 /**
  * API สำหรับ Super Admin ในการจัดการฐานข้อมูล MySQL และระบบจัดการโรงเรียน (Multi-Tenant)
  */
-header('Content-Type: application/json; charset=UTF-8');
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/functions.php';
+ob_start();
+@ini_set('display_errors', '0');
+error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+function sendJsonResponse(array $data, int $statusCode = 200): void {
+    if (ob_get_length()) {
+        ob_clean();
+    }
+    http_response_code($statusCode);
+    header('Content-Type: application/json; charset=UTF-8');
+    header('Cache-Control: no-cache, must-revalidate');
+    echo json_encode($data, JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
-
-// Check Super Admin auth for sensitive operations (allow in dev or if superadmin session)
-$isSuperAdmin = !empty($_SESSION['is_super_admin']) || (!empty($_SESSION['user_role']) && $_SESSION['user_role'] === 'superadmin');
-
-// Read JSON input if sent as body
-$input = json_decode(file_get_contents('php://input'), true) ?: $_POST;
-
 try {
+    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../includes/functions.php';
+
+    if (session_status() === PHP_SESSION_NONE) {
+        @session_start();
+    }
+
+    $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+    // Check Super Admin auth for sensitive operations (allow in dev or if superadmin session)
+    $isSuperAdmin = !empty($_SESSION['is_super_admin']) || (!empty($_SESSION['user_role']) && $_SESSION['user_role'] === 'superadmin');
+
+    // Read JSON input if sent as body
+    $rawInput = file_get_contents('php://input');
+    $input = json_decode($rawInput, true) ?: $_POST;
+
     switch ($action) {
         case 'test_db':
             $host = trim($input['host'] ?? 'localhost');
@@ -298,6 +313,11 @@ try {
             echo json_encode(['success' => false, 'message' => 'Invalid action: ' . $action]);
             break;
     }
-} catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
+
+    $rawOutput = ob_get_clean();
+    header('Content-Type: application/json; charset=UTF-8');
+    echo $rawOutput;
+    exit;
+} catch (Throwable $e) {
+    sendJsonResponse(['success' => false, 'message' => 'เกิดข้อผิดพลาด: ' . $e->getMessage()]);
 }

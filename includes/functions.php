@@ -31,8 +31,8 @@ function verifyCsrfToken(?string $token): bool {
 /**
  * จัดรูปแบบตัวเลขเงินบาท
  */
-function formatMoney(float|int $amount): string {
-    return number_format($amount, 2, '.', ',');
+function formatMoney($amount): string {
+    return number_format((float)$amount, 2, '.', ',');
 }
 
 /**

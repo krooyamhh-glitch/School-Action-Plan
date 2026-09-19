@@ -526,6 +526,17 @@ if ($pdo) {
             });
         }
 
+        async function safeFetchJson(url, options) {
+            const res = await fetch(url, options);
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                const preview = text ? text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200) : '';
+                throw new Error(preview || `เซิร์ฟเวอร์ไม่ตอบกลับข้อมูล JSON (HTTP ${res.status})`);
+            }
+        }
+
         async function handleAddSchool(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-save-school');
@@ -542,7 +553,7 @@ if ($pdo) {
             const isActive = document.getElementById('school-is-active').checked ? 1 : 0;
 
             try {
-                const res = await fetch('api/super_admin_api.php?action=add_school', {
+                const data = await safeFetchJson('api/super_admin_api.php?action=add_school', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -555,7 +566,6 @@ if ($pdo) {
                         is_active: isActive
                     })
                 });
-                const data = await res.json();
                 if (data.success) {
                     alert(data.message);
                     location.reload();
@@ -563,7 +573,7 @@ if ($pdo) {
                     alert('ข้อผิดพลาด: ' + data.message);
                 }
             } catch (err) {
-                alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์');
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์: ' + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>บันทึกและเปิดใช้งานโรงเรียน</span>';
@@ -576,35 +586,33 @@ if ($pdo) {
             if (!confirm(`คุณต้องการ ${actionText} โรงเรียนนี้ใช่หรือไม่?`)) return;
 
             try {
-                const res = await fetch('api/super_admin_api.php?action=toggle_school_status', {
+                const data = await safeFetchJson('api/super_admin_api.php?action=toggle_school_status', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ school_id: schoolId, is_active: newStatus })
                 });
-                const data = await res.json();
                 if (data.success) {
                     location.reload();
                 } else {
                     alert(data.message);
                 }
             } catch (err) {
-                alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ');
+                alert('เกิดข้อผิดพลาดในการเปลี่ยนสถานะ: ' + err.message);
             }
         }
 
         async function deleteSchool(schoolId, name) {
             if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบโรงเรียน "${name}" ?`)) return;
             try {
-                const res = await fetch('api/super_admin_api.php?action=delete_school', {
+                const data = await safeFetchJson('api/super_admin_api.php?action=delete_school', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ school_id: schoolId })
                 });
-                const data = await res.json();
                 alert(data.message);
                 if (data.success) location.reload();
             } catch (err) {
-                alert('เกิดข้อผิดพลาด');
+                alert('เกิดข้อผิดพลาด: ' + err.message);
             }
         }
 
@@ -623,12 +631,11 @@ if ($pdo) {
             };
 
             try {
-                const res = await fetch('api/super_admin_api.php?action=test_db', {
+                const data = await safeFetchJson('api/super_admin_api.php?action=test_db', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
                 if (data.success) {
                     box.classList.add('bg-emerald-950/40', 'border-emerald-700', 'text-emerald-300');
                     box.innerHTML = '✓ ' + data.message;
@@ -638,7 +645,7 @@ if ($pdo) {
                 }
             } catch (e) {
                 box.classList.add('bg-rose-950/40', 'border-rose-700', 'text-rose-300');
-                box.innerText = '✗ ไม่สามารถเรียก API ทดสอบได้';
+                box.innerText = '✗ ไม่สามารถเรียก API ทดสอบได้: ' + e.message;
             }
         }
 
@@ -653,15 +660,14 @@ if ($pdo) {
             };
 
             try {
-                const res = await fetch('api/super_admin_api.php?action=save_db_config', {
+                const data = await safeFetchJson('api/super_admin_api.php?action=save_db_config', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                const data = await res.json();
                 alert(data.message);
             } catch (err) {
-                alert('เกิดข้อผิดพลาดในการบันทึก');
+                alert('เกิดข้อผิดพลาดในการบันทึก: ' + err.message);
             }
         }
 
@@ -685,8 +691,7 @@ if ($pdo) {
             appendLog('เริ่มดำเนินการอัปเดตและสร้างตาราง Multi-Tenant...', 'text-amber-400');
 
             try {
-                const res = await fetch('api/super_admin_api.php?action=auto_migrate', { method: 'POST' });
-                const data = await res.json();
+                const data = await safeFetchJson('api/super_admin_api.php?action=auto_migrate', { method: 'POST' });
                 if (data.logs && data.logs.length) {
                     data.logs.forEach(l => appendLog(l, 'text-emerald-400'));
                 }

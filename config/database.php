@@ -102,21 +102,32 @@ class Database {
      * รัน Auto-Migration และ Update โครงสร้างตารางอัตโนมัติ
      */
     public static function runAutoMigration(?PDO $pdo = null): array {
+        @set_time_limit(180);
         $logs = [];
         try {
             if (!$pdo) {
-                // พยายามเชื่อมต่อแบบปกติ หรือสร้าง DB หากยังไม่มี
-                $dsnNoDb = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=" . DB_CHARSET;
-                $rootPdo = new PDO($dsnNoDb, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-                $rootPdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
-                $logs[] = "✓ ตรวจสอบและสร้างฐานข้อมูล '" . DB_NAME . "' สำเร็จ";
-
+                // 1. ลองเชื่อมต่อไปยังฐานข้อมูลที่ระบุก่อนโดยตรง
                 $pdo = self::getConnection();
-                if (!$pdo) {
-                    $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-                    $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-                }
             }
+
+            if (!$pdo) {
+                // 2. หากยังเชื่อมไม่ได้ ให้ลองตรวจสอบหรือสร้าง DB (ถ้ามีสิทธิ์)
+                try {
+                    $dsnNoDb = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";charset=" . DB_CHARSET;
+                    $rootPdo = new PDO($dsnNoDb, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 4]);
+                    $rootPdo->exec("CREATE DATABASE IF NOT EXISTS `" . DB_NAME . "` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+                    $logs[] = "✓ ตรวจสอบและสร้างฐานข้อมูล '" . DB_NAME . "' สำเร็จ";
+                } catch (Throwable $dbCreateErr) {
+                    // บน Shared Hosting/cPanel ผู้ใช้อาจไม่มีสิทธิ์ CREATE DATABASE ซึ่งเป็นเรื่องปกติหากสร้าง DB ผ่าน cPanel แล้ว
+                }
+
+                $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
+                $pdo = new PDO($dsn, DB_USER, DB_PASS, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 5]);
+            }
+
+            $logs[] = "✓ เชื่อมต่อฐานข้อมูล '" . DB_NAME . "' สำเร็จ";
+            $pdo->exec("SET FOREIGN_KEY_CHECKS = 0;");
+            $pdo->exec("SET NAMES utf8mb4;");
 
             // 1. ตาราง Super Admins
             $pdo->exec("
@@ -230,24 +241,34 @@ class Database {
                 $sqlContent = preg_replace('/DROP TABLE IF EXISTS [^;]+;/i', '', $sqlContent);
                 // แทนที่ CREATE TABLE ด้วย CREATE TABLE IF NOT EXISTS
                 $sqlContent = preg_replace('/CREATE TABLE `([^`]+)`/i', 'CREATE TABLE IF NOT EXISTS `$1`', $sqlContent);
+                // ตัด comment รูปแบบ /* ... */, -- ..., # ...
+                $sqlContent = preg_replace('!/\*.*?\*/!s', '', $sqlContent);
+                $sqlContent = preg_replace('/^--[^\r\n]*/m', '', $sqlContent);
+                $sqlContent = preg_replace('/^#[^\r\n]*/m', '', $sqlContent);
+
                 $statements = array_filter(array_map('trim', explode(';', $sqlContent)));
+                $executed = 0;
                 foreach ($statements as $query) {
-                    if (empty($query) || str_starts_with($query, '--') || str_starts_with($query, '/*')) continue;
+                    if (empty($query)) continue;
+                    if (substr($query, 0, 2) === '--' || substr($query, 0, 2) === '/*' || substr($query, 0, 1) === '#') continue;
                     try {
                         $pdo->exec($query);
-                    } catch (Exception $ex) {
+                        $executed++;
+                    } catch (Throwable $ex) {
                         // ignore if already exists or constraint already present
                     }
                 }
-                $logs[] = "✓ ตรวจสอบและอัปเดต 14 ตารางหลักทั้งหมดจาก schema.sql สำเร็จ";
+                $logs[] = "✓ ตรวจสอบและซิงค์โครงสร้างตารางทั้ง 14 ตารางจาก schema.sql สำเร็จ ({$executed} คำสั่ง)";
             }
+
+            $pdo->exec("SET FOREIGN_KEY_CHECKS = 1;");
 
             return [
                 'success' => true,
-                'message' => 'อัปเดตและซ่อมแซมโครงสร้างฐานข้อมูล MySQL สำเร็จสมบูรณ์',
+                'message' => 'อัปเดตและซ่อมแซมโครงสร้างฐานข้อมูล MySQL และระบบ Multi-Tenant สำเร็จสมบูรณ์',
                 'logs' => $logs
             ];
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             return [
                 'success' => false,
                 'message' => 'เกิดข้อผิดพลาดในการอัปเดตฐานข้อมูล: ' . $e->getMessage(),
