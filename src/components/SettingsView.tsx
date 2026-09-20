@@ -20,7 +20,12 @@ import {
   RefreshCw,
   FileCode,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  Lock,
+  Unlock,
+  BellRing,
+  HelpCircle
 } from 'lucide-react';
 import { generateSqlDump } from '../utils/exportUtils';
 
@@ -30,6 +35,7 @@ interface SettingsViewProps {
   activeFiscalYear: FiscalYear;
   onSelectFiscalYear: (fy: FiscalYear) => void;
   onAddFiscalYear: (newYear: number) => void;
+  onUpdateFiscalYear: (updated: FiscalYear) => void;
   students: StudentLevel[];
   revenues: RevenueItem[];
   allocations: BudgetAllocation[];
@@ -45,6 +51,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   activeFiscalYear,
   onSelectFiscalYear,
   onAddFiscalYear,
+  onUpdateFiscalYear,
   students,
   revenues,
   allocations,
@@ -57,6 +64,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [presetSuccess, setPresetSuccess] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreSuccess, setRestoreSuccess] = useState(false);
+  const [proposalConfigSuccess, setProposalConfigSuccess] = useState(false);
+
+  // Local state for proposal window settings
+  const [isProposalOpen, setIsProposalOpen] = useState<boolean>(activeFiscalYear.isProposalOpen !== false);
+  const [proposalOpenDate, setProposalOpenDate] = useState<string>(activeFiscalYear.proposalOpenDate || `${activeFiscalYear.year - 543 - 1}-10-01`);
+  const [proposalCloseDate, setProposalCloseDate] = useState<string>(activeFiscalYear.proposalCloseDate || `${activeFiscalYear.year - 543}-01-31`);
+  const [proposalNotice, setProposalNotice] = useState<string>(
+    activeFiscalYear.proposalNotice || `เปิดรับการเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${activeFiscalYear.year} คุณครูและบุคลากรทุกท่านสามารถส่งข้อเสนอโครงการตามกลุ่มงานได้`
+  );
 
   const handleAddNewYear = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,6 +82,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
     onAddFiscalYear(newYearInput);
     setNewYearInput(newYearInput + 1);
+  };
+
+  const handleSaveProposalConfig = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updated: FiscalYear = {
+      ...activeFiscalYear,
+      isProposalOpen,
+      proposalOpenDate,
+      proposalCloseDate,
+      proposalNotice,
+    };
+    onUpdateFiscalYear(updated);
+    setProposalConfigSuccess(true);
+    setTimeout(() => setProposalConfigSuccess(false), 3500);
   };
 
   const handleApplyPreset = () => {
@@ -149,16 +179,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Settings className="h-6 w-6 text-blue-700" />
-            <span>ตั้งค่าระบบและการสำรองข้อมูล (System Settings)</span>
+            <span>ตั้งค่าระบบและการเสนอโครงการ (System & Proposal Settings)</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            จัดการปีงบประมาณ เกณฑ์อัตรามาตรฐาน สพฐ. การสำรองข้อมูล (SQL / JSON) และการกู้คืนข้อมูล
+            จัดการปีงบประมาณ เปิด/ปิดรับการเสนอโครงการจากคุณครู เกณฑ์อัตรามาตรฐาน สพฐ. และการสำรองข้อมูล (SQL / JSON)
           </p>
         </div>
       </div>
 
-      {/* Grid: 3 Main Settings Panels */}
+      {/* Main Settings Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         {/* Panel 1: Fiscal Year Management */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
@@ -180,7 +211,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <button
                     key={fy.id}
                     type="button"
-                    onClick={() => onSelectFiscalYear(fy)}
+                    onClick={() => {
+                      onSelectFiscalYear(fy);
+                      setIsProposalOpen(fy.isProposalOpen !== false);
+                      setProposalOpenDate(fy.proposalOpenDate || `${fy.year - 543 - 1}-10-01`);
+                      setProposalCloseDate(fy.proposalCloseDate || `${fy.year - 543}-01-31`);
+                      setProposalNotice(fy.proposalNotice || `เปิดรับการเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${fy.year}`);
+                    }}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
                       isActive
                         ? 'bg-blue-900 text-amber-300 border-blue-900 shadow-sm'
@@ -222,22 +259,127 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </form>
         </div>
 
-        {/* Panel 2: OBEC Presets & Rates */}
+        {/* Panel 2: Project Proposal Submission Window Control (เปิด/ปิดรับการเสนอโครงการ) */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-indigo-600" />
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">2. ตั้งค่าเปิด/ปิดรับการเสนอโครงการ</h3>
+                <p className="text-xs text-slate-500">กำหนดช่วงเวลาให้คุณครูสามารถเสนอโครงการเข้ามาใช้จ่ายงบประมาณแต่ละกลุ่มงาน</p>
+              </div>
+            </div>
+
+            <span
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                isProposalOpen
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                  : 'bg-rose-100 text-rose-800 border border-rose-300'
+              }`}
+            >
+              {isProposalOpen ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+              <span>{isProposalOpen ? 'เปิดรับข้อเสนอ' : 'ปิดรับข้อเสนอ'}</span>
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveProposalConfig} className="space-y-4">
+            {/* Toggle switch */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  สถานะการรับข้อเสนอโครงการ (ปีงบประมาณ {activeFiscalYear.year})
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  {isProposalOpen
+                    ? 'คุณครูสามารถเข้าสู่ระบบและกดปุ่ม "เพิ่มโครงการ" หรือ "สร้างโครงการด้วย AI" ได้'
+                    : 'ระบบจะระงับการสร้างโครงการใหม่โดยคุณครูชั่วคราว (เฉพาะผู้ดูแลระบบและฝ่ายแผนที่ยังแก้ไขได้)'}
+                </span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={isProposalOpen}
+                  onChange={(e) => setIsProposalOpen(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            {/* Date range */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  วันที่เริ่มเปิดรับข้อเสนอ:
+                </label>
+                <input
+                  type="date"
+                  value={proposalOpenDate}
+                  onChange={(e) => setProposalOpenDate(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  วันที่สิ้นสุด/ปิดรับข้อเสนอ:
+                </label>
+                <input
+                  type="date"
+                  value={proposalCloseDate}
+                  onChange={(e) => setProposalCloseDate(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Announcement note */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                ประกาศ / คำชี้แจงสำหรับคุณครูในการเสนอโครงการ:
+              </label>
+              <textarea
+                rows={2}
+                value={proposalNotice}
+                onChange={(e) => setProposalNotice(e.target.value)}
+                placeholder="ระบุข้อความแจ้งเตือนคุณครู..."
+                className="w-full text-xs rounded-lg border border-slate-300 p-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              />
+            </div>
+
+            {proposalConfigSuccess && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-100 p-2 rounded-lg">
+                <Check className="h-4 w-4" />
+                <span>บันทึกการตั้งค่าเปิด/ปิดรับการเสนอโครงการเรียบร้อยแล้ว</span>
+              </div>
+            )}
+
+            <button
+              id="btn-save-proposal-window"
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold transition-colors shadow-xs"
+            >
+              <Save className="h-4 w-4" />
+              <span>บันทึกสถานะการเปิด/ปิดรับโครงการ</span>
+            </button>
+          </form>
+        </div>
+
+        {/* Panel 3: OBEC Presets & Rates */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <Sparkles className="h-5 w-5 text-amber-500" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">2. อัตราเงินอุดหนุนรายหัวมาตรฐาน สพฐ.</h3>
-              <p className="text-xs text-slate-500">เกณฑ์อัตราตามระเบียบกระทรวงศึกษาธิการ</p>
+              <h3 className="text-sm font-semibold text-slate-900">3. อัตราเงินอุดหนุนรายหัวและเกณฑ์มาตรฐาน สพฐ.</h3>
+              <p className="text-xs text-slate-500">เกณฑ์อัตราตามระเบียบกระทรวงศึกษาธิการ (ปรับปรุงทุกปีงบประมาณ)</p>
             </div>
           </div>
 
           <div className="text-xs space-y-2 text-slate-600 bg-amber-50/60 p-3 rounded-lg border border-amber-200">
-            <div className="font-semibold text-amber-950">เกณฑ์อัตราพื้นฐานต่อคน/ปี:</div>
+            <div className="font-semibold text-amber-950">เกณฑ์อัตราพื้นฐานต่อคน/ปี (สพฐ.):</div>
             <ul className="list-disc pl-4 space-y-1 text-[11px] text-amber-900">
               <li>ก่อนประถมศึกษา (อนุบาล 1-3): 1,800 บาท/คน/ปี</li>
               <li>ประถมศึกษา (ป.1 - ป.6): 2,050 บาท/คน/ปี</li>
-              <li>เงินอุดหนุนรายหัวส่วนเพิ่ม (โรงเรียนขนาดเล็ก): ~500 บาท/คน/ปี</li>
+              <li>เงินอุดหนุนรายหัวส่วนเพิ่ม (โรงเรียนขนาดเล็ก / คุณภาพ): ~500 บาท/คน/ปี</li>
               <li>ค่าเครื่องแบบนักเรียน: อนุบาล 325 บ. / ประถม 400 บ.</li>
               <li>ค่าอุปกรณ์การเรียน: อนุบาล 145 บ. / ประถม 220 บ.</li>
               <li>ค่ากิจกรรมพัฒนาผู้เรียน: อนุบาล 464 บ. / ประถม 518 บ.</li>
@@ -258,30 +400,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-amber-400 bg-amber-50 hover:bg-amber-100 text-amber-950 text-xs font-bold transition-colors shadow-2xs"
           >
             <Sparkles className="h-4 w-4 text-amber-600" />
-            <span>ปรับใช้อัตรามาตรฐาน สพฐ. พ.ศ. 2568 ทันที</span>
+            <span>ปรับใช้อัตรามาตรฐาน สพฐ. พ.ศ. {activeFiscalYear.year} ทันที</span>
           </button>
         </div>
 
-        {/* Panel 3: Backup & Restore Data */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4 lg:col-span-2">
+        {/* Panel 4: Backup & Restore Data */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
           <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
             <Database className="h-5 w-5 text-emerald-600" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-900">3. สำรองข้อมูล (Backup) และกู้คืนข้อมูล (Restore)</h3>
+              <h3 className="text-sm font-semibold text-slate-900">4. สำรองข้อมูล (Backup) และกู้คืนข้อมูล (Restore)</h3>
               <p className="text-xs text-slate-500">
-                ส่งออกเป็นไฟล์ SQL สำหรับนำเข้า MySQL / phpMyAdmin บน Web Hosting หรือไฟล์ JSON สำหรับกู้คืนในระบบ
+                ส่งออกเป็นไฟล์ SQL สำหรับนำเข้า MySQL / phpMyAdmin บน Web Hosting หรือไฟล์ JSON
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
             {/* Backup Box */}
-            <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50">
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2.5 bg-slate-50">
               <div className="font-semibold text-xs text-slate-800 flex items-center gap-1.5">
                 <Download className="h-4 w-4 text-blue-600" />
                 <span>สำรองข้อมูลระบบ (Export Backup)</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 ดาวน์โหลดข้อมูลโรงเรียน นักเรียน ประมาณการรายรับ การจัดสรรงบประมาณ โครงการ และรายการเบิกจ่ายทั้งหมด
               </p>
 
@@ -290,36 +432,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   id="btn-backup-sql"
                   type="button"
                   onClick={handleDownloadSqlDump}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-semibold shadow-xs transition-colors"
                 >
                   <FileCode className="h-4 w-4" />
-                  <span>ส่งออกเป็น SQL (.sql) สำหรับ phpMyAdmin</span>
+                  <span>SQL (.sql)</span>
                 </button>
 
                 <button
                   id="btn-backup-json"
                   type="button"
                   onClick={handleDownloadJsonBackup}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold shadow-xs transition-colors"
                 >
                   <Download className="h-4 w-4 text-slate-500" />
-                  <span>ส่งออกเป็น JSON (.json)</span>
+                  <span>JSON (.json)</span>
                 </button>
               </div>
             </div>
 
             {/* Restore Box */}
-            <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50">
+            <div className="rounded-xl border border-slate-200 p-3.5 space-y-2.5 bg-slate-50">
               <div className="font-semibold text-xs text-slate-800 flex items-center gap-1.5">
                 <Upload className="h-4 w-4 text-emerald-600" />
                 <span>กู้คืนข้อมูล (Restore Backup)</span>
               </div>
-              <p className="text-xs text-slate-500">
-                เลือกไฟล์สำรองข้อมูล JSON (.json) ที่เคยส่งออกจากระบบเพื่อกู้คืนสถานะข้อมูล
-              </p>
 
               <div>
-                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors">
+                <label className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer shadow-xs transition-colors">
                   <Upload className="h-4 w-4" />
                   <span>เลือกไฟล์ JSON เพื่อกู้คืน</span>
                   <input
@@ -348,6 +487,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );

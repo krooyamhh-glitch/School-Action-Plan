@@ -3,6 +3,7 @@ export type UserRole = 'superadmin' | 'admin' | 'director' | 'teacher';
 export interface User {
   id: number;
   username: string;
+  citizenId?: string; // เลขประจำตัวประชาชน 13 หลัก
   fullName: string;
   email: string;
   role: UserRole;
@@ -70,6 +71,10 @@ export interface FiscalYear {
   endDate: string;
   totalStudents?: number;
   teacherCount: number;
+  isProposalOpen?: boolean; // สถานะเปิด/ปิดรับการเสนอโครงการจากคุณครู
+  proposalOpenDate?: string; // วันที่เริ่มเปิดรับข้อเสนอ
+  proposalCloseDate?: string; // วันที่ปิดรับข้อเสนอ
+  proposalNotice?: string; // ข้อความประกาศ/คำชี้แจงสำหรับคุณครูในการเสนอโครงการ
 }
 
 export interface StudentLevel {
@@ -107,6 +112,14 @@ export interface BudgetAllocation {
   remainingAmount: number;
   colorHex: string;
   description: string;
+  isContingency?: boolean; // ระบุว่าเป็นงบกลาง / สำรองจ่ายฉุกเฉิน
+  contingencySubItems?: Array<{
+    id: string;
+    name: string; // เช่น ค่าไฟฟ้า, ค่าน้ำประปา, ค่าอินเทอร์เน็ต, สำรองฉุกเฉิน/ซ่อมแซม
+    allocatedAmount: number;
+    spentAmount: number;
+    description?: string;
+  }>;
 }
 
 export interface LearnerActivity {
@@ -202,6 +215,11 @@ export interface Project {
   qualitativeTarget?: string;
   approvedBy?: string;
   approvedDate?: string;
+  proposerCitizenId?: string; // หมายเลขประจำตัวประชาชน 13 หลักของคุณครูผู้เสนอโครงการ
+  proposerName?: string; // ชื่อ-นามสกุลของคุณครูผู้เสนอโครงการ
+  attachmentName?: string; // ชื่อเอกสารหรือไฟล์แนบรายละเอียดโครงการ
+  attachmentUrl?: string; // ลิงก์หรือไฟล์แนบรายละเอียดโครงการ
+  fullProposalDetails?: any; // รายละเอียดโครงการที่เสนอฉบับสมบูรณ์ (รวม AI Proposal)
 }
 
 export interface BudgetTransaction {

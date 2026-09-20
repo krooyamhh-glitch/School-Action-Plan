@@ -30,8 +30,19 @@ import {
   ChevronDown,
   ChevronUp,
   Sliders,
-  DollarSign
+  DollarSign,
+  Lock,
+  Unlock,
+  BellRing,
+  UserCheck
 } from 'lucide-react';
+
+function formatCitizenId(id?: string) {
+  if (!id) return '';
+  const clean = id.replace(/\D/g, '');
+  if (clean.length !== 13) return id;
+  return `${clean[0]}-${clean.slice(1, 5)}-${clean.slice(5, 10)}-${clean.slice(10, 12)}-${clean[12]}`;
+}
 
 interface AiProjectWriterViewProps {
   school: School;
@@ -104,6 +115,11 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
   const [specialFocus, setSpecialFocus] = useState('');
   const [promptNotes, setPromptNotes] = useState('');
 
+  // Teacher Proposer states (Citizen ID submission)
+  const [proposerName, setProposerName] = useState('');
+  const [proposerCitizenId, setProposerCitizenId] = useState('');
+  const [attachmentName, setAttachmentName] = useState('');
+
   // API Key states
   const [customApiKey, setCustomApiKey] = useState('');
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
@@ -154,6 +170,11 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
 
   // Generate proposal
   const handleGenerate = async () => {
+    if (fiscalYear.isProposalOpen === false) {
+      alert(`ขณะนี้ระบบปิดรับการเสนอโครงการประจำปีงบประมาณ พ.ศ. ${fiscalYear.year}\n${fiscalYear.proposalNotice || 'กรุณาติดต่อฝ่ายแผนงานหรือผู้บริหารสถานศึกษา'}`);
+      return;
+    }
+
     if (!projectName.trim()) {
       alert('กรุณาระบุชื่อโครงการหรือเลือกจากตัวอย่างหัวข้อโครงการ');
       return;
@@ -331,6 +352,19 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
   // Save to active projects list in the app
   const handleSaveToSchoolActionPlan = () => {
     if (!proposal) return;
+    if (fiscalYear.isProposalOpen === false) {
+      alert(`ไม่สามารถบันทึกโครงการเข้าแผนงานได้ เนื่องจากระบบปิดรับการเสนอโครงการประจำปีงบประมาณ พ.ศ. ${fiscalYear.year}`);
+      return;
+    }
+
+    const cleanCitizenId = proposerCitizenId.replace(/\D/g, '');
+    if (cleanCitizenId && cleanCitizenId.length !== 13) {
+      alert('เลขประจำตัวประชาชนของครูผู้เสนอโครงการต้องมีครบ 13 หลัก');
+      return;
+    }
+
+    const finalTeacherName = proposerName.trim() || proposal.responsiblePerson || 'ครูผู้รับผิดชอบโครงการ';
+
     const newProject: Project = {
       id: Date.now(),
       schoolId: school.id,
@@ -345,24 +379,28 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
       procedures: proposal.activities.map((a) => `${a.phase}: ${a.description} (${a.duration})`).join('\n'),
       durationStart: proposal.timeline.split('-')[0]?.trim() || `16 พ.ค. ${fiscalYear.year}`,
       durationEnd: proposal.timeline.split('-')[1]?.trim() || `31 มี.ค. ${fiscalYear.year + 1}`,
-      location: proposal.location || 'โรงเรียน',
+      location: proposal.location || school.name || 'โรงเรียนเด็กเรียนดี',
       targetGroup: proposal.quantitativeTarget,
-      responsiblePerson: proposal.responsiblePerson || 'ครูผู้รับผิดชอบโครงการ',
+      responsiblePerson: finalTeacherName,
+      proposerName: finalTeacherName,
+      proposerCitizenId: cleanCitizenId || undefined,
+      attachmentName: attachmentName.trim() || undefined,
+      fullProposalDetails: proposal,
       department: proposal.department || 'ฝ่ายวิชาการ',
       budgetSource: proposal.budgetSource || 'เงินอุดหนุนรายหัว สพฐ.',
       allocatedBudget: proposal.totalBudget,
       spentBudget: 0,
       remainingBudget: proposal.totalBudget,
       status: 'not_started',
-      approvalStatus: 'approved',
+      approvalStatus: 'pending',
       strategyId: strategies[0]?.id || 1,
       sortOrder: 99,
       expenseItems: proposal.expenseItems,
       expenses: proposal.expenseItems,
       duration: proposal.timeline,
       kpi: proposal.kpis,
-      approvedBy: school.directorName,
-      approvedDate: new Date().toISOString().split('T')[0],
+      approvedBy: undefined,
+      approvedDate: undefined,
     };
 
     onSaveToProjects(newProject);
@@ -424,6 +462,45 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Proposal Window Banner */}
+      {fiscalYear.isProposalOpen === false ? (
+        <div className="rounded-xl p-4 bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 shadow-xs">
+          <Lock className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="font-bold text-sm flex items-center gap-2">
+              <span>สถานะ: ปิดรับการเสนอโครงการประจำปีงบประมาณ พ.ศ. {fiscalYear.year}</span>
+              <span className="text-[11px] bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-medium">
+                ปิดระบบชั่วคราว
+              </span>
+            </div>
+            <p className="text-xs text-rose-800">
+              {fiscalYear.proposalNotice || 'ขณะนี้อยู่นอกช่วงเวลาการเสนอโครงการ หรือฝ่ายบริหารสถานศึกษาได้ทำการปิดรับข้อเสนอโครงการแล้ว'}
+            </p>
+            {fiscalYear.proposalCloseDate && (
+              <p className="text-[11px] text-rose-700">
+                (กำหนดปิดรับข้อเสนอเมื่อ: {fiscalYear.proposalCloseDate})
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Unlock className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold">เปิดรับการเสนอโครงการ:</span>{' '}
+              <span>คุณครูสามารถร่างและเสนอโครงการตามกลุ่มงานประจำปีงบประมาณ พ.ศ. {fiscalYear.year} ได้</span>
+              {fiscalYear.proposalCloseDate && (
+                <span className="ml-1 text-emerald-700 font-semibold">(สิ้นสุดวันที่ {fiscalYear.proposalCloseDate})</span>
+              )}
+            </div>
+          </div>
+          <span className="text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-semibold shrink-0">
+            ระบบเปิดรับข้อเสนอ
+          </span>
+        </div>
+      )}
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center justify-between border-b border-slate-200 no-print">
@@ -711,6 +788,71 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                   className="w-full text-xs rounded-lg border border-slate-300 py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 />
               </div>
+
+              {/* Teacher Proposer Information Card */}
+              <div className="md:col-span-2 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div className="flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 text-blue-700" />
+                    <span className="text-xs font-bold text-blue-950">
+                      ข้อมูลครูผู้เสนอโครงการ (Teacher Proposer Identification)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200 font-medium">
+                    ยืนยันตัวตนด้วยเลขบัตรประชาชน 13 หลัก
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      ชื่อ-สกุล ครูผู้เสนอโครงการ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={proposerName}
+                      onChange={(e) => setProposerName(e.target.value)}
+                      placeholder="เช่น ครูสมชาย ใจดี"
+                      className="w-full text-xs rounded-lg border border-slate-300 bg-white py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      เลขประจำตัวประชาชน 13 หลัก ของครูผู้เสนอ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={13}
+                      value={proposerCitizenId}
+                      onChange={(e) => setProposerCitizenId(e.target.value.replace(/\D/g, ''))}
+                      placeholder="เช่น 1234567890123"
+                      className="w-full text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <div className="text-[10px] mt-1 flex items-center justify-between">
+                      <span className="font-mono text-slate-600">
+                        {proposerCitizenId ? formatCitizenId(proposerCitizenId) : 'ระบุเลขบัตรประชาชน 13 หลัก'}
+                      </span>
+                      <span className={proposerCitizenId.length === 13 ? 'text-emerald-700 font-bold' : 'text-amber-600'}>
+                        {proposerCitizenId.length === 13 ? '✓ ครบ 13 หลัก' : `(${proposerCitizenId.length}/13)`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    เอกสารแนบโครงการ / ลิงก์ไฟล์ประกอบ (ถ้ามี)
+                  </label>
+                  <input
+                    type="text"
+                    value={attachmentName}
+                    onChange={(e) => setAttachmentName(e.target.value)}
+                    placeholder="เช่น โครงการพัฒนาการศึกษา2568.pdf หรือ ลิงก์ Google Drive เอกสารแนบ"
+                    className="w-full text-xs rounded-lg border border-slate-300 bg-white py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Submit Bar */}
@@ -825,8 +967,13 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                   <span className="text-blue-900 font-semibold">{proposal.department}</span>
                 </div>
                 <div>
-                  <span className="font-bold text-slate-950">ผู้รับผิดชอบโครงการ: </span>
-                  <span className="font-semibold">{proposal.responsiblePerson}</span>
+                  <span className="font-bold text-slate-950">ผู้เสนอโครงการ: </span>
+                  <span className="font-semibold text-blue-900">{proposerName || proposal.responsiblePerson}</span>
+                  {proposerCitizenId && (
+                    <span className="ml-2 text-xs font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                      เลขบัตร: {formatCitizenId(proposerCitizenId)}
+                    </span>
+                  )}
                   {proposal.position && <span className="text-slate-500"> ({proposal.position})</span>}
                 </div>
               </div>
@@ -1001,7 +1148,12 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                 <div className="grid grid-cols-2 gap-8 text-center text-xs">
                   <div className="space-y-1.5">
                     <p>ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
-                    <p className="font-semibold">({proposal.responsiblePerson})</p>
+                    <p className="font-semibold">({proposerName || proposal.responsiblePerson})</p>
+                    {proposerCitizenId ? (
+                      <p className="text-slate-600 font-mono text-[11px]">เลขประจำตัวประชาชน: {formatCitizenId(proposerCitizenId)}</p>
+                    ) : (
+                      <p className="text-slate-500">เลขประจำตัวประชาชน: ........................................</p>
+                    )}
                     <p className="text-slate-600">ตำแหน่ง {proposal.position || 'ครูผู้รับผิดชอบโครงการ'}</p>
                     <p className="text-slate-400">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                   </div>

@@ -57,8 +57,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   // New School Form state
   const [newSmis, setNewSmis] = useState('');
   const [newName, setNewName] = useState('');
-  const [newProvince, setNewProvince] = useState('ขอนแก่น');
-  const [newArea, setNewArea] = useState('สพป.ขอนแก่น เขต 1');
+  const [newProvince, setNewProvince] = useState('กรุงเทพมหานคร');
+  const [newArea, setNewArea] = useState('สำนักงานเขตพื้นที่การศึกษาประถมศึกษา');
   const [newDirector, setNewDirector] = useState('');
   const [newAdminUser, setNewAdminUser] = useState('');
   const [newAdminPass, setNewAdminPass] = useState('123456');
@@ -118,7 +118,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     setFormSuccess(null);
 
     if (!/^[0-9]{8}$/.test(newSmis)) {
-      setFormError('รหัสสมัคร SMIS ต้องเป็นตัวเลข 8 หลักพอดี (เช่น 10400100)');
+      setFormError('รหัสสมัคร SMIS ต้องเป็นตัวเลข 8 หลักพอดี (เช่น 10000001)');
       return;
     }
 
@@ -179,19 +179,52 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   };
 
   const handleDeleteSchool = async (school: School) => {
-    if (!window.confirm(`ยืนยันการลบโรงเรียน "${school.name}" หรือไม่?`)) return;
+    if (!window.confirm(`ยืนยันการลบโรงเรียน "${school.name}" ออกจากระบบหรือไม่?`)) return;
     try {
       const res = await fetch(`/api/super-admin/schools/${school.id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
       if (data.success) {
-        setSchools((prev) => prev.filter((s) => s.id !== school.id));
+        setSchools((prev) => {
+          const updated = prev.filter((s) => s.id !== school.id);
+          if (currentSchool.id === school.id && updated.length > 0) {
+            onSelectSchool(updated[0]);
+          }
+          return updated;
+        });
+        alert(data.message || 'ลบโรงเรียนเรียบร้อยแล้ว');
       } else {
         alert(data.message);
       }
     } catch (err) {
       alert('เกิดข้อผิดพลาดในการลบโรงเรียน');
+    }
+  };
+
+  const handlePurgeAllDemo = async () => {
+    if (
+      !window.confirm(
+        'ยืนยันการล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมดหรือไม่?\n\nระบบจะลบข้อมูลโรงเรียนเดิมออกและตั้งค่าเริ่มต้นเป็น "โรงเรียนเด็กเรียนดี"'
+      )
+    )
+      return;
+    try {
+      const res = await fetch('/api/super-admin/purge-demo', {
+        method: 'POST',
+      });
+      const data = await res.json();
+      alert(data.message || 'ล้างข้อมูล Demo เรียบร้อยแล้ว');
+      if (data.success) {
+        if (Array.isArray(data.schools) && data.schools.length > 0) {
+          setSchools(data.schools);
+          onSelectSchool(data.schools[0]);
+        } else {
+          fetchSchools();
+        }
+      }
+    } catch (err: any) {
+      alert('เกิดข้อผิดพลาด: ' + err.message);
     }
   };
 
@@ -563,15 +596,26 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 </p>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ค้นหาชื่อ, รหัส SMIS, จังหวัด..."
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 pl-8 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500"
-                />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePurgeAllDemo}
+                  className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shrink-0"
+                  title="ล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมด"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                  <span>ล้างข้อมูล Demo เก่าทั้งหมด</span>
+                </button>
+                <div className="relative w-full sm:w-64">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ค้นหาชื่อ, รหัส SMIS, จังหวัด..."
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 pl-8 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-500"
+                  />
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                </div>
               </div>
             </div>
 
@@ -688,15 +732,13 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                               <span>สลับข้อมูล</span>
                             </button>
 
-                            {sch.id > 1 && (
-                              <button
-                                onClick={() => handleDeleteSchool(sch)}
-                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                                title="ลบโรงเรียน"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteSchool(sch)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                              title="ลบโรงเรียน"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>

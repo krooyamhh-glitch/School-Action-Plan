@@ -154,9 +154,19 @@ export default function App() {
       endDate: `${yearNum - 543}-09-30`,
       isActive: true,
       teacherCount: 15,
+      isProposalOpen: true,
+      proposalOpenDate: `${yearNum - 543 - 1}-10-01`,
+      proposalCloseDate: `${yearNum - 543}-01-31`,
+      proposalNotice: `เปิดรับการเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${yearNum}`,
     };
     setFiscalYears((prev) => [...prev.map((y) => ({ ...y, isActive: false })), newFy]);
     setActiveFiscalYear(newFy);
+  };
+
+  // Handle updating an existing fiscal year (e.g. proposal open/close settings)
+  const handleUpdateFiscalYear = (updatedFy: FiscalYear) => {
+    setFiscalYears((prev) => prev.map((fy) => (fy.id === updatedFy.id ? updatedFy : fy)));
+    setActiveFiscalYear(updatedFy);
   };
 
   // Handle restoring data from backup JSON
@@ -468,6 +478,7 @@ export default function App() {
                 activeFiscalYear={activeFiscalYear}
                 onSelectFiscalYear={(fy) => setActiveFiscalYear(fy)}
                 onAddFiscalYear={handleAddFiscalYear}
+                onUpdateFiscalYear={handleUpdateFiscalYear}
                 students={students}
                 revenues={revenues}
                 allocations={allocations}

@@ -18,6 +18,8 @@ import {
   UserCheck,
   Bot,
   Sparkles,
+  Lock,
+  Unlock,
 } from 'lucide-react';
 
 interface ProjectsViewProps {
@@ -28,6 +30,13 @@ interface ProjectsViewProps {
   onUpdateProjects: (updated: Project[]) => void;
   onOpenExpensesForProject: (project: Project) => void;
   onNavigateToAiWriter?: () => void;
+}
+
+function formatCitizenId(id?: string) {
+  if (!id) return '';
+  const clean = id.replace(/\D/g, '');
+  if (clean.length !== 13) return id;
+  return `${clean[0]}-${clean.slice(1, 5)}-${clean.slice(5, 10)}-${clean.slice(10, 12)}-${clean[12]}`;
 }
 
 export const ProjectsView: React.FC<ProjectsViewProps> = ({
@@ -57,10 +66,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
     qualitativeTarget: '',
     kpi: '',
     procedures: '',
-    duration: 'ตลอดปีการศึกษา 2568',
-    location: 'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา',
+    duration: `ตลอดปีการศึกษา ${activeFiscalYear.year}`,
+    location: 'โรงเรียนเด็กเรียนดี',
     targetGroup: 'นักเรียนและครูทุกคน',
     responsiblePerson: currentUser.fullName,
+    proposerName: currentUser.fullName,
+    proposerCitizenId: currentUser.citizenId || '',
+    attachmentName: '',
     department: departments[0]?.departmentName || 'ฝ่ายวิชาการ',
     budgetSource: 'เงินอุดหนุนรายหัว (สพฐ.)',
     allocatedBudget: 50000,
@@ -81,6 +93,10 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
   });
 
   const handleOpenAddModal = () => {
+    if (activeFiscalYear.isProposalOpen === false && currentUser.role !== 'admin') {
+      alert(`ขณะนี้ระบบปิดรับการเสนอโครงการประจำปีงบประมาณ พ.ศ. ${activeFiscalYear.year}\n${activeFiscalYear.proposalNotice || 'กรุณาติดต่อฝ่ายแผนงานหรือผู้บริหารสถานศึกษา'}`);
+      return;
+    }
     setEditingProject(null);
     const codeNum = projects.length + 1;
     setFormData({
@@ -92,10 +108,13 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       qualitativeTarget: 'นักเรียนมีทักษะและคุณลักษณะอันพึงประสงค์ตามเกณฑ์',
       kpi: 'ร้อยละของนักเรียนที่ผ่านเกณฑ์ประเมินไม่น้อยกว่า 85%',
       procedures: '1. วางแผนดำเนินงาน (P)\n2. ดำเนินการตามกิจกรรม (D)\n3. นิเทศติดตามประเมินผล (C)\n4. ปรับปรุงพัฒนาและสรุปรายงาน (A)',
-      duration: 'พฤษภาคม 2568 - มีนาคม 2569',
-      location: 'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา',
-      targetGroup: 'นักเรียนชั้น อ.1 - ป.6',
+      duration: `พฤษภาคม ${activeFiscalYear.year} - มีนาคม ${activeFiscalYear.year + 1}`,
+      location: 'โรงเรียนเด็กเรียนดี',
+      targetGroup: 'นักเรียนและครูทุกคน',
       responsiblePerson: currentUser.fullName,
+      proposerName: currentUser.fullName,
+      proposerCitizenId: currentUser.citizenId || '',
+      attachmentName: '',
       department: departments[0]?.departmentName || 'ฝ่ายวิชาการ',
       budgetSource: 'เงินอุดหนุนรายหัว (สพฐ.)',
       allocatedBudget: 30000,
@@ -126,6 +145,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
       return;
     }
 
+    if (formData.proposerCitizenId && formData.proposerCitizenId.replace(/\D/g, '').length !== 13) {
+      alert('เลขประจำตัวประชาชนของครูผู้เสนอโครงการต้องมีครบ 13 หลัก');
+      return;
+    }
+
+    const cleanCitizenId = formData.proposerCitizenId ? formData.proposerCitizenId.replace(/\D/g, '') : undefined;
+    const cleanResponsiblePerson = formData.proposerName || formData.responsiblePerson || currentUser.fullName;
+
     if (editingProject) {
       // Update
       const updated = projects.map((p) => {
@@ -134,6 +161,9 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           return {
             ...p,
             ...(formData as Project),
+            responsiblePerson: cleanResponsiblePerson,
+            proposerCitizenId: cleanCitizenId,
+            proposerName: cleanResponsiblePerson,
             allocatedBudget: alloc,
             remainingBudget: Math.max(0, alloc - p.spentBudget),
           };
@@ -150,9 +180,14 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
         id: newId,
         schoolId: 1,
         fiscalYearId: activeFiscalYear.id,
+        responsiblePerson: cleanResponsiblePerson,
+        proposerCitizenId: cleanCitizenId,
+        proposerName: cleanResponsiblePerson,
         allocatedBudget: alloc,
         spentBudget: 0,
         remainingBudget: alloc,
+        status: formData.status || 'not_started',
+        approvalStatus: currentUser.role === 'admin' || currentUser.role === 'director' ? 'approved' : 'pending',
       };
       onUpdateProjects([...projects, newProj]);
     }
@@ -220,6 +255,45 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Proposal Window Banner */}
+      {activeFiscalYear.isProposalOpen === false ? (
+        <div className="rounded-xl p-4 bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 shadow-xs">
+          <Lock className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <div className="font-bold text-sm flex items-center gap-2">
+              <span>สถานะ: ปิดรับการเสนอโครงการประจำปีงบประมาณ พ.ศ. {activeFiscalYear.year}</span>
+              <span className="text-[11px] bg-rose-200 text-rose-800 px-2 py-0.5 rounded-full font-medium">
+                ปิดระบบชั่วคราว
+              </span>
+            </div>
+            <p className="text-xs text-rose-800">
+              {activeFiscalYear.proposalNotice || 'ขณะนี้อยู่นอกช่วงเวลาการเสนอโครงการ หรือฝ่ายบริหารสถานศึกษาได้ทำการปิดรับข้อเสนอโครงการแล้ว'}
+            </p>
+            {activeFiscalYear.proposalCloseDate && (
+              <p className="text-[11px] text-rose-700">
+                (กำหนดปิดรับข้อเสนอเมื่อ: {activeFiscalYear.proposalCloseDate})
+              </p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Unlock className="h-4 w-4 text-emerald-600 shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold">เปิดรับการเสนอโครงการ:</span>{' '}
+              <span>คุณครูสามารถเสนอโครงการเข้ามาเพื่อขอรับการจัดสรรงบประมาณแต่ละกลุ่มงานได้</span>
+              {activeFiscalYear.proposalCloseDate && (
+                <span className="ml-1 text-emerald-700 font-semibold">(สิ้นสุดวันที่ {activeFiscalYear.proposalCloseDate})</span>
+              )}
+            </div>
+          </div>
+          <span className="text-[11px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full font-semibold shrink-0">
+            เปิดรับข้อเสนอ
+          </span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
@@ -310,7 +384,19 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                           {p.department}
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-slate-700 font-medium">{p.responsiblePerson}</td>
+                      <td className="py-3 px-3 text-slate-700">
+                        <div className="font-semibold text-slate-900">{p.responsiblePerson}</div>
+                        {p.proposerCitizenId && (
+                          <div className="text-[10px] font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded inline-block mt-0.5 border border-blue-100" title="เลขประจำตัวประชาชนผู้เสนอโครงการ">
+                            บัตร: {formatCitizenId(p.proposerCitizenId)}
+                          </div>
+                        )}
+                        {p.attachmentName && (
+                          <div className="text-[10px] text-slate-500 truncate max-w-[150px] mt-0.5" title={p.attachmentName}>
+                            📎 {p.attachmentName}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
                         {p.allocatedBudget.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
@@ -548,6 +634,67 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({
                     value={formData.targetGroup}
                     onChange={(e) => setFormData({ ...formData, targetGroup: e.target.value })}
                     className="w-full rounded-lg border border-slate-300 p-2 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Teacher Proposer & Citizen ID Card */}
+              <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-900 flex items-center gap-1.5">
+                    <UserCheck className="h-4 w-4 text-blue-700" />
+                    ข้อมูลครูผู้เสนอโครงการ (Teacher Proposer)
+                  </span>
+                  <span className="text-[11px] text-blue-700 bg-white px-2 py-0.5 rounded-full border border-blue-200 font-medium">
+                    ยืนยันตัวตนด้วยเลขบัตรประชาชน 13 หลัก
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      ชื่อ-สกุล ครูผู้เสนอโครงการ <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.proposerName || formData.responsiblePerson || ''}
+                      onChange={(e) => setFormData({ ...formData, proposerName: e.target.value, responsiblePerson: e.target.value })}
+                      placeholder="เช่น ครูวิชัย ใจดี"
+                      className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      เลขประจำตัวประชาชน 13 หลัก <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={13}
+                      value={formData.proposerCitizenId || ''}
+                      onChange={(e) => setFormData({ ...formData, proposerCitizenId: e.target.value.replace(/\D/g, '') })}
+                      placeholder="เช่น 1234567890123"
+                      className="w-full rounded-lg border border-slate-300 p-2 text-xs font-mono font-bold bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <div className="text-[10px] mt-1 flex items-center justify-between">
+                      <span className="font-mono text-slate-600">
+                        {formData.proposerCitizenId ? formatCitizenId(formData.proposerCitizenId) : 'ระบุเลข 13 หลัก'}
+                      </span>
+                      <span className={formData.proposerCitizenId?.replace(/\D/g, '').length === 13 ? 'text-emerald-600 font-semibold' : 'text-amber-600'}>
+                        {formData.proposerCitizenId?.replace(/\D/g, '').length === 13 ? '✓ ครบ 13 หลัก' : `(${formData.proposerCitizenId?.replace(/\D/g, '').length || 0}/13)`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    เอกสารแนบโครงการ / ลิงก์รายละเอียดโครงการ (ถ้ามี)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.attachmentName || ''}
+                    onChange={(e) => setFormData({ ...formData, attachmentName: e.target.value })}
+                    placeholder="เช่น แบบเสนอโครงการ_ฉบับสมบูรณ์.pdf หรือระบุ URL ลิงก์ไฟล์"
+                    className="w-full rounded-lg border border-slate-300 p-2 text-xs bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   />
                 </div>
               </div>

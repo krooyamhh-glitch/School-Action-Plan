@@ -119,62 +119,31 @@ try {
 
             // Fallback sample data if DB is not connected yet
             if (empty($schools)) {
-                $schools = [
-                    [
-                        'id' => 1,
-                        'school_code' => '1040010025',
-                        'smis_code' => '10400100',
-                        'is_active' => 1,
-                        'school_key' => 'SCH-10400100',
-                        'admin_username' => 'admin_10400100',
-                        'admin_password_plain' => '123456',
-                        'name' => 'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา',
-                        'province' => 'ขอนแก่น',
-                        'education_area' => 'สพป.ขอนแก่น เขต 1',
-                        'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา',
-                        'phone' => '043-241987',
-                        'email' => 'nongbua@school.ac.th',
-                        'student_count' => 312,
-                        'project_count' => 10,
-                        'total_budget' => 670000
-                    ],
-                    [
-                        'id' => 2,
-                        'school_code' => '1050020042',
-                        'smis_code' => '10500200',
-                        'is_active' => 1,
-                        'school_key' => 'SCH-10500200',
-                        'admin_username' => 'admin_10500200',
-                        'admin_password_plain' => '123456',
-                        'name' => 'โรงเรียนมัธยมศึกษาวิทยาคมสพฐ.',
-                        'province' => 'นครราชสีมา',
-                        'education_area' => 'สพม.นครราชสีมา',
-                        'director_name' => 'นายประเสริฐ สุขเจริญ',
-                        'phone' => '044-123456',
-                        'email' => 'korat_school@obec.mail.go.th',
-                        'student_count' => 850,
-                        'project_count' => 18,
-                        'total_budget' => 1850000
-                    ],
-                    [
-                        'id' => 3,
-                        'school_code' => '1010030089',
-                        'smis_code' => '10100300',
-                        'is_active' => 0,
-                        'school_key' => 'SCH-10100300',
-                        'admin_username' => 'admin_10100300',
-                        'admin_password_plain' => 'pass@1010',
-                        'name' => 'โรงเรียนขยายโอกาสบ้านดอนพัฒนา',
-                        'province' => 'เชียงใหม่',
-                        'education_area' => 'สพป.เชียงใหม่ เขต 2',
-                        'director_name' => 'นางพิมพ์ใจ อุ่นเรือน',
-                        'phone' => '053-998877',
-                        'email' => 'donpattana@school.ac.th',
-                        'student_count' => 185,
-                        'project_count' => 6,
-                        'total_budget' => 380000
-                    ]
-                ];
+                if (isset($_SESSION['schools']) && is_array($_SESSION['schools'])) {
+                    $schools = $_SESSION['schools'];
+                } else {
+                    $schools = [
+                        [
+                            'id' => 1,
+                            'school_code' => '1000000001',
+                            'smis_code' => '10000001',
+                            'is_active' => 1,
+                            'school_key' => 'SCH-10000001',
+                            'admin_username' => 'admin',
+                            'admin_password_plain' => '123456',
+                            'name' => 'โรงเรียนเด็กเรียนดี',
+                            'province' => 'กรุงเทพมหานคร',
+                            'education_area' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา',
+                            'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา',
+                            'phone' => '02-123-4567',
+                            'email' => 'dekriandee@obec.mail.go.th',
+                            'student_count' => 180,
+                            'project_count' => 1,
+                            'total_budget' => 746600
+                        ]
+                    ];
+                    $_SESSION['schools'] = $schools;
+                }
             }
 
             echo json_encode(['success' => true, 'schools' => $schools], JSON_UNESCAPED_UNICODE);
@@ -300,13 +269,50 @@ try {
         case 'delete_school':
             $schoolId = (int)($input['school_id'] ?? 0);
             $pdo = Database::getConnection();
-            if ($pdo && $schoolId > 1) { // ป้องกันไม่ให้ลบโรงเรียนหลัก ID 1
-                $stmt = $pdo->prepare("DELETE FROM schools WHERE id = ?");
-                $stmt->execute([$schoolId]);
-                echo json_encode(['success' => true, 'message' => 'ลบข้อมูลโรงเรียนเรียบร้อยแล้ว']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'ไม่สามารถลบโรงเรียนหลักของระบบได้']);
+            if ($pdo && $schoolId > 0) {
+                try {
+                    $stmt = $pdo->prepare("DELETE FROM schools WHERE id = ?");
+                    $stmt->execute([$schoolId]);
+                } catch (Exception $e) {
+                    // ignore if constraint
+                }
             }
+            if (isset($_SESSION['schools']) && is_array($_SESSION['schools'])) {
+                $_SESSION['schools'] = array_values(array_filter($_SESSION['schools'], fn($s) => ($s['id'] ?? 0) !== $schoolId));
+            }
+            echo json_encode(['success' => true, 'message' => 'ลบข้อมูลโรงเรียนออกจากระบบเรียบร้อยแล้ว']);
+            break;
+
+        case 'purge_all_demo':
+            $pdo = Database::getConnection();
+            if ($pdo) {
+                try {
+                    // Delete demo schools matching Nong Bua or 10400100
+                    $pdo->exec("DELETE FROM schools WHERE name LIKE '%หนองบัว%' OR school_code = '1040010025' OR smis_code = '10400100'");
+                } catch (Exception $e) {}
+            }
+            // Clear session schools and reset to pure default โรงเรียนเด็กเรียนดี
+            $_SESSION['schools'] = [
+                [
+                    'id' => 1,
+                    'school_code' => '1000000001',
+                    'smis_code' => '10000001',
+                    'is_active' => 1,
+                    'school_key' => 'SCH-10000001',
+                    'admin_username' => 'admin',
+                    'admin_password_plain' => '123456',
+                    'name' => 'โรงเรียนเด็กเรียนดี',
+                    'province' => 'กรุงเทพมหานคร',
+                    'education_area' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา',
+                    'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา',
+                    'phone' => '02-123-4567',
+                    'email' => 'dekriandee@obec.mail.go.th',
+                    'student_count' => 180,
+                    'project_count' => 1,
+                    'total_budget' => 746600
+                ]
+            ];
+            echo json_encode(['success' => true, 'message' => 'ล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมดออกจากระบบเรียบร้อยแล้ว']);
             break;
 
         default:

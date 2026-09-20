@@ -30,6 +30,54 @@ export const RevenueView: React.FC<RevenueViewProps> = ({
   const [items, setItems] = useState<RevenueItem[]>([...revenues]);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  // Quick rate settings state for current fiscal year
+  const [perHeadRate, setPerHeadRate] = useState<number>(() => {
+    const found = revenues.find((r) => r.itemName.includes('เงินอุดหนุนรายหัว'));
+    return found ? found.ratePerHead : 1980;
+  });
+  const [activityRate, setActivityRate] = useState<number>(() => {
+    const found = revenues.find((r) => r.itemName.includes('กิจกรรมพัฒนาผู้เรียน'));
+    return found ? found.ratePerHead : 460;
+  });
+  const [equipmentRate, setEquipmentRate] = useState<number>(() => {
+    const found = revenues.find((r) => r.itemName.includes('อุปกรณ์การเรียน'));
+    return found ? found.ratePerHead : 400;
+  });
+  const [uniformRate, setUniformRate] = useState<number>(() => {
+    const found = revenues.find((r) => r.itemName.includes('เครื่องแบบ'));
+    return found ? found.ratePerHead : 380;
+  });
+  const [bookRate, setBookRate] = useState<number>(() => {
+    const found = revenues.find((r) => r.itemName.includes('หนังสือเรียน'));
+    return found ? found.ratePerHead : 650;
+  });
+
+  // Apply Quick Rates
+  const handleApplyQuickRates = () => {
+    setItems((prev) =>
+      prev.map((r) => {
+        if (r.itemName.includes('เงินอุดหนุนรายหัว')) {
+          return { ...r, ratePerHead: perHeadRate, calculatedAmount: Math.round(perHeadRate * r.eligibleCount) };
+        }
+        if (r.itemName.includes('กิจกรรมพัฒนาผู้เรียน')) {
+          return { ...r, ratePerHead: activityRate, calculatedAmount: Math.round(activityRate * r.eligibleCount) };
+        }
+        if (r.itemName.includes('อุปกรณ์การเรียน')) {
+          return { ...r, ratePerHead: equipmentRate, calculatedAmount: Math.round(equipmentRate * r.eligibleCount) };
+        }
+        if (r.itemName.includes('เครื่องแบบ')) {
+          return { ...r, ratePerHead: uniformRate, calculatedAmount: Math.round(uniformRate * r.eligibleCount) };
+        }
+        if (r.itemName.includes('หนังสือเรียน')) {
+          return { ...r, ratePerHead: bookRate, calculatedAmount: Math.round(bookRate * r.eligibleCount) };
+        }
+        return r;
+      })
+    );
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
+  };
+
   // Field change
   const handleItemChange = (id: number, field: keyof RevenueItem, val: any) => {
     setItems((prev) =>
@@ -145,6 +193,39 @@ export const RevenueView: React.FC<RevenueViewProps> = ({
             <span>ดึงยอดนักเรียน ({totalStudents} คน)</span>
           </button>
           <button
+            id="btn-apply-obec-preset-revenue"
+            type="button"
+            onClick={() => {
+              if (confirm('ปรับอัตราเงินอุดหนุนรายหัวและเงินกิจกรรมพัฒนาผู้เรียนตามเกณฑ์ สพฐ. มาตรฐานหรือไม่?')) {
+                setItems((prev) =>
+                  prev.map((r) => {
+                    if (r.itemName.includes('เงินอุดหนุนรายหัว')) {
+                      return { ...r, ratePerHead: 1980, calculatedAmount: Math.round(1980 * r.eligibleCount) };
+                    }
+                    if (r.itemName.includes('กิจกรรมพัฒนาผู้เรียน')) {
+                      return { ...r, ratePerHead: 460, calculatedAmount: Math.round(460 * r.eligibleCount) };
+                    }
+                    if (r.itemName.includes('หนังสือเรียน')) {
+                      return { ...r, ratePerHead: 650, calculatedAmount: Math.round(650 * r.eligibleCount) };
+                    }
+                    if (r.itemName.includes('เครื่องแบบ')) {
+                      return { ...r, ratePerHead: 380, calculatedAmount: Math.round(380 * r.eligibleCount) };
+                    }
+                    if (r.itemName.includes('อุปกรณ์การเรียน')) {
+                      return { ...r, ratePerHead: 400, calculatedAmount: Math.round(400 * r.eligibleCount) };
+                    }
+                    return r;
+                  })
+                );
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 px-3 py-2 text-xs font-medium transition-colors"
+            title="ปรับปรุงอัตราตามเกณฑ์มาตรฐาน สพฐ."
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+            <span>โหลดเกณฑ์ สพฐ.</span>
+          </button>
+          <button
             id="btn-export-revenue-excel"
             type="button"
             onClick={handleExportExcel}
@@ -162,6 +243,126 @@ export const RevenueView: React.FC<RevenueViewProps> = ({
             <Save className="h-4 w-4" />
             <span>บันทึกข้อมูลรายรับ</span>
           </button>
+        </div>
+      </div>
+
+      {/* Per-Head & Learner Activity Rate Setting Panel for Current Fiscal Year */}
+      <div className="bg-white rounded-xl border-2 border-blue-200/80 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-blue-700" />
+              <span>กำหนดอัตราเงินอุดหนุนรายหัวและกิจกรรมพัฒนาผู้เรียน (ปีงบประมาณ พ.ศ. {activeFiscalYear.year})</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              ปรับปรุงอัตราเงินต่อคนตามเกณฑ์มติ ครม. / สพฐ. ประจำปีงบประมาณปัจจุบัน (ฐานจำนวนนักเรียน: <span className="font-semibold text-blue-700">{totalStudents} คน</span>)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleApplyQuickRates}
+            className="self-start sm:self-auto flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white rounded-lg text-xs font-semibold shadow-xs transition-all"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+            <span>คำนวณและปรับใช้อัตราปีนี้ทันที</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {/* Rate 1: Per-Head Subsidy */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+            <div className="text-[11px] font-semibold text-slate-700">1. เงินอุดหนุนรายหัว</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={perHeadRate}
+                onChange={(e) => setPerHeadRate(Number(e.target.value) || 0)}
+                className="w-full text-sm font-bold text-blue-900 bg-white border border-slate-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-[11px] text-slate-500 shrink-0">บ./คน</span>
+            </div>
+            <div className="text-[10px] text-slate-500 text-right">
+              รวม: <span className="font-semibold text-slate-700 font-mono">{(perHeadRate * totalStudents).toLocaleString()}</span> บ.
+            </div>
+          </div>
+
+          {/* Rate 2: Learner Activities */}
+          <div className="bg-indigo-50/50 p-3 rounded-lg border border-indigo-200 space-y-1.5">
+            <div className="text-[11px] font-semibold text-indigo-950">2. กิจกรรมพัฒนาผู้เรียน</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={activityRate}
+                onChange={(e) => setActivityRate(Number(e.target.value) || 0)}
+                className="w-full text-sm font-bold text-indigo-900 bg-white border border-indigo-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <span className="text-[11px] text-indigo-700 shrink-0">บ./คน</span>
+            </div>
+            <div className="text-[10px] text-indigo-700 text-right">
+              รวม: <span className="font-semibold text-indigo-950 font-mono">{(activityRate * totalStudents).toLocaleString()}</span> บ.
+            </div>
+          </div>
+
+          {/* Rate 3: Learning Materials */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+            <div className="text-[11px] font-semibold text-slate-700">3. อุปกรณ์การเรียน</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={equipmentRate}
+                onChange={(e) => setEquipmentRate(Number(e.target.value) || 0)}
+                className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-[11px] text-slate-500 shrink-0">บ./คน</span>
+            </div>
+            <div className="text-[10px] text-slate-500 text-right">
+              รวม: <span className="font-semibold text-slate-700 font-mono">{(equipmentRate * totalStudents).toLocaleString()}</span> บ.
+            </div>
+          </div>
+
+          {/* Rate 4: Student Uniforms */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+            <div className="text-[11px] font-semibold text-slate-700">4. เครื่องแบบนักเรียน</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={uniformRate}
+                onChange={(e) => setUniformRate(Number(e.target.value) || 0)}
+                className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-[11px] text-slate-500 shrink-0">บ./คน</span>
+            </div>
+            <div className="text-[10px] text-slate-500 text-right">
+              รวม: <span className="font-semibold text-slate-700 font-mono">{(uniformRate * totalStudents).toLocaleString()}</span> บ.
+            </div>
+          </div>
+
+          {/* Rate 5: Textbooks */}
+          <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-1.5">
+            <div className="text-[11px] font-semibold text-slate-700">5. หนังสือเรียน</div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={bookRate}
+                onChange={(e) => setBookRate(Number(e.target.value) || 0)}
+                className="w-full text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <span className="text-[11px] text-slate-500 shrink-0">บ./คน</span>
+            </div>
+            <div className="text-[10px] text-slate-500 text-right">
+              รวม: <span className="font-semibold text-slate-700 font-mono">{(bookRate * totalStudents).toLocaleString()}</span> บ.
+            </div>
+          </div>
         </div>
       </div>
 

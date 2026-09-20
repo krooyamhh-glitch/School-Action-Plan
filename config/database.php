@@ -223,14 +223,14 @@ class Database {
                         school_code, smis_code, is_active, school_key, admin_username, admin_password_plain, admin_password_hash,
                         name, address, subdistrict, district, province, zipcode, education_area, director_name, phone, email, logo_url
                     ) VALUES (
-                        '1040010025', '10400100', 1, 'SCH-10400100', 'admin_10400100', '123456', ?,
-                        'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา', '124 หมู่ที่ 3 ถนนมิตรภาพ', 'ศิลา', 'เมืองขอนแก่น', 'ขอนแก่น', '40000',
-                        'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาขอนแก่น เขต 1', 'ดร.สมศักดิ์ พัฒนศึกษา', '043-241987', 'nongbua@school.ac.th',
+                        '1000000001', '10000001', 1, 'SCH-10000001', 'admin', '123456', ?,
+                        'โรงเรียนเด็กเรียนดี', 'เลขที่ 99 หมู่ที่ 1 ถนนตัวอย่าง', 'ตำบลตัวอย่าง', 'อำเภอตัวอย่าง', 'จังหวัดตัวอย่าง', '10000',
+                        'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1', 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)', '02-000-0000', 'dekreeandee_school@obec.mail.go.th',
                         'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80'
                     )
                 ");
                 $stmtIns->execute([$hash]);
-                $logs[] = "✓ สร้างโรงเรียนเริ่มต้นพร้อมรหัส SMIS: 10400100 และ School ID: SCH-10400100";
+                $logs[] = "✓ สร้างโรงเรียนเริ่มต้น 'โรงเรียนเด็กเรียนดี' พร้อมรหัส SMIS: 10000001";
             }
 
             // 3. รันโครงสร้างหลักที่เหลือ (fiscal_years, users, students, revenues, budget_allocations, learner_activities, projects, ฯลฯ)

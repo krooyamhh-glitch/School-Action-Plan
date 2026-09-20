@@ -106,21 +106,27 @@ function getSchoolData(): array {
             // fallback
         }
     }
+    // Check if school data was updated in session
+    if (isset($_SESSION['school']) && is_array($_SESSION['school'])) {
+        return $_SESSION['school'];
+    }
+
     return [
         'id' => 1,
-        'school_code' => '1040010025',
-        'name' => 'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา',
+        'school_code' => '1000000001',
+        'smis_code' => '10000001',
+        'name' => 'โรงเรียนเด็กเรียนดี',
         'address' => '124 หมู่ที่ 3 ถนนมิตรภาพ',
-        'subdistrict' => 'ศิลา',
-        'district' => 'เมืองขอนแก่น',
-        'province' => 'ขอนแก่น',
-        'zipcode' => '40000',
+        'subdistrict' => 'ในเมือง',
+        'district' => 'เมือง',
+        'province' => 'กรุงเทพมหานคร',
+        'zipcode' => '10100',
         'affiliation' => 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)',
-        'education_area' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาขอนแก่น เขต 1',
+        'education_area' => 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา',
         'fiscal_year' => 2568,
-        'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา',
-        'phone' => '043-241987',
-        'email' => 'nongbua_school@obec.mail.go.th',
+        'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา (ผู้อำนวยการ)',
+        'phone' => '02-123-4567',
+        'email' => 'dekriandee_school@obec.mail.go.th',
         'logo_url' => 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80'
     ];
 }

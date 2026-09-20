@@ -237,11 +237,17 @@ if ($pdo) {
                                     <?= count($schools) ?> แห่ง
                                 </span>
                             </h2>
-                            <p class="text-xs text-slate-400">ควบคุมการเปิด/ปิดสิทธิ์การใช้งาน และตรวจสอบ ID/รหัสผ่านของแต่ละโรงเรียน</p>
+                            <p class="text-xs text-slate-400">ควบคุมการเปิด/ปิดสิทธิ์การใช้งาน แก้ไข และลบข้อมูลโรงเรียนในระบบ</p>
                         </div>
-                        <div class="relative w-full sm:w-64">
-                            <input type="text" id="search-school-input" oninput="filterSchools(this.value)" placeholder="ค้นหาชื่อ, รหัส SMIS, จังหวัด..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 pl-8 text-xs text-white placeholder:text-slate-500 focus:outline-hidden focus:border-blue-500">
-                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="purgeAllDemo()" class="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 transition-colors" title="ล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมด">
+                                <i data-lucide="trash" class="w-3.5 h-3.5 text-rose-400"></i>
+                                <span>ล้างข้อมูล Demo เก่า</span>
+                            </button>
+                            <div class="relative w-full sm:w-56">
+                                <input type="text" id="search-school-input" oninput="filterSchools(this.value)" placeholder="ค้นหาชื่อ, รหัส SMIS..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 pl-8 text-xs text-white placeholder:text-slate-500 focus:outline-hidden focus:border-blue-500">
+                                <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5"></i>
+                            </div>
                         </div>
                     </div>
 
@@ -293,11 +299,9 @@ if ($pdo) {
                                                 <button onclick="editSchool(<?= htmlspecialchars(json_encode($sch)) ?>)" class="p-1 text-slate-400 hover:text-amber-400 hover:bg-slate-700 rounded-md" title="แก้ไข">
                                                     <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                                 </button>
-                                                <?php if ($sch['id'] > 1): ?>
-                                                    <button onclick="deleteSchool(<?= $sch['id'] ?>, '<?= htmlspecialchars(addslashes($sch['name'])) ?>')" class="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded-md" title="ลบ">
-                                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                                                    </button>
-                                                <?php endif; ?>
+                                                <button onclick="deleteSchool(<?= $sch['id'] ?>, '<?= htmlspecialchars(addslashes($sch['name'])) ?>')" class="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-700 rounded-md" title="ลบข้อมูลโรงเรียน">
+                                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -608,6 +612,21 @@ if ($pdo) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ school_id: schoolId })
+                });
+                alert(data.message);
+                if (data.success) location.reload();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาด: ' + err.message);
+            }
+        }
+
+        async function purgeAllDemo() {
+            if (!confirm('ยืนยันการล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมดหรือไม่?\n(ระบบจะลบข้อมูลโรงเรียนเดิมและตั้งค่าเริ่มต้นเป็น "โรงเรียนเด็กเรียนดี")')) return;
+            try {
+                const data = await safeFetchJson('api/super_admin_api.php?action=purge_all_demo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
                 });
                 alert(data.message);
                 if (data.success) location.reload();

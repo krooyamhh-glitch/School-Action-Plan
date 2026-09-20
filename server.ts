@@ -287,67 +287,66 @@ import fs from 'fs';
 
 const DB_CONFIG_FILE = path.join(process.cwd(), 'config', 'db_config.json');
 const SCHOOLS_DATA_FILE = path.join(process.cwd(), 'config', 'schools_data.json');
+const APP_DB_FILE = path.join(process.cwd(), 'config', 'app_database.json');
 
 // Default initial schools with 8-digit SMIS and isolation keys
 const defaultSchools = [
   {
     id: 1,
-    schoolCode: '1040010025',
-    smisCode: '10400100',
+    schoolCode: '1000000001',
+    smisCode: '10000001',
     isActive: true,
-    schoolKey: 'SCH-10400100',
-    adminUsername: 'admin_10400100',
+    schoolKey: 'SCH-10000001',
+    adminUsername: 'admin',
     adminPasswordPlain: '123456',
-    name: 'โรงเรียนอนุบาลและประถมศึกษาบ้านหนองบัววิทยา',
-    province: 'ขอนแก่น',
-    educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาขอนแก่น เขต 1',
-    directorName: 'ดร.สมศักดิ์ พัฒนศึกษา',
-    phone: '043-241987',
-    email: 'nongbua_school@obec.mail.go.th',
-    studentCount: 312,
-    projectCount: 10,
-    totalBudget: 670000,
-    notes: 'โรงเรียนต้นแบบ - สพฐ.',
-  },
-  {
-    id: 2,
-    schoolCode: '1050020042',
-    smisCode: '10500200',
-    isActive: true,
-    schoolKey: 'SCH-10500200',
-    adminUsername: 'admin_10500200',
-    adminPasswordPlain: '123456',
-    name: 'โรงเรียนมัธยมศึกษาวิทยาคมสพฐ.',
-    province: 'นครราชสีมา',
-    educationArea: 'สำนักงานเขตพื้นที่การศึกษามัธยมศึกษานครราชสีมา',
-    directorName: 'นายประเสริฐ สุขเจริญ',
-    phone: '044-123456',
-    email: 'korat_school@obec.mail.go.th',
-    studentCount: 850,
-    projectCount: 18,
-    totalBudget: 1850000,
-    notes: 'โรงเรียนมัธยมขนาดใหญ่',
-  },
-  {
-    id: 3,
-    schoolCode: '1010030089',
-    smisCode: '10100300',
-    isActive: false,
-    schoolKey: 'SCH-10100300',
-    adminUsername: 'admin_10100300',
-    adminPasswordPlain: 'pass@1010',
-    name: 'โรงเรียนขยายโอกาสบ้านดอนพัฒนา',
-    province: 'เชียงใหม่',
-    educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาเชียงใหม่ เขต 2',
-    directorName: 'นางพิมพ์ใจ อุ่นเรือน',
-    phone: '053-998877',
-    email: 'donpattana@school.ac.th',
-    studentCount: 185,
-    projectCount: 6,
-    totalBudget: 380000,
-    notes: 'ระงับการใช้งานชั่วคราว รอปรับปรุงแผนงบประมาณ',
+    name: 'โรงเรียนเด็กเรียนดี',
+    province: 'จังหวัดตัวอย่าง',
+    educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1',
+    directorName: 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)',
+    phone: '02-000-0000',
+    email: 'dekreeandee_school@obec.mail.go.th',
+    studentCount: 180,
+    projectCount: 1,
+    totalBudget: 746600,
+    notes: 'สถานศึกษาเริ่มต้น พร้อมสำหรับการใช้งานจริง',
   },
 ];
+
+// App Database Storage Endpoints
+app.get('/api/database', (req, res) => {
+  try {
+    if (fs.existsSync(APP_DB_FILE)) {
+      const data = JSON.parse(fs.readFileSync(APP_DB_FILE, 'utf-8'));
+      return res.json({ success: true, data });
+    }
+  } catch (e: any) {
+    console.error('Error reading app database:', e);
+  }
+  return res.json({ success: true, data: null });
+});
+
+app.post('/api/database', (req, res) => {
+  try {
+    const dir = path.dirname(APP_DB_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(APP_DB_FILE, JSON.stringify(req.body, null, 2), 'utf-8');
+    return res.json({ success: true, message: 'บันทึกฐานข้อมูลลงดิสก์เรียบร้อยแล้ว' });
+  } catch (e: any) {
+    console.error('Error saving app database:', e);
+    return res.status(500).json({ success: false, message: e.message });
+  }
+});
+
+app.post('/api/database/reset', (req, res) => {
+  try {
+    if (fs.existsSync(APP_DB_FILE)) {
+      fs.unlinkSync(APP_DB_FILE);
+    }
+    return res.json({ success: true, message: 'รีเซ็ตฐานข้อมูลเริ่มต้นเรียบร้อยแล้ว' });
+  } catch (e: any) {
+    return res.status(500).json({ success: false, message: e.message });
+  }
+});
 
 function getStoredSchools() {
   try {
@@ -558,9 +557,6 @@ app.patch('/api/super-admin/schools/:id/toggle', (req, res) => {
 // 8. Delete School
 app.delete('/api/super-admin/schools/:id', (req, res) => {
   const schoolId = Number(req.params.id);
-  if (schoolId === 1) {
-    return res.status(400).json({ success: false, message: 'ไม่อนุญาตให้ลบโรงเรียนหลักเริ่มต้น (ID 1)' });
-  }
 
   let schools = getStoredSchools();
   const initialLen = schools.length;
@@ -572,6 +568,35 @@ app.delete('/api/super-admin/schools/:id', (req, res) => {
 
   saveStoredSchools(schools);
   res.json({ success: true, message: 'ลบโรงเรียนออกจากระบบเรียบร้อยแล้ว' });
+});
+
+// 9. Purge all demo schools and reset to clean default
+app.post('/api/super-admin/purge-demo', (req, res) => {
+  const defaultSchool = {
+    id: 1,
+    schoolCode: '1000000001',
+    smisCode: '10000001',
+    isActive: true,
+    schoolKey: 'SCH-10000001',
+    adminUsername: 'admin',
+    adminPasswordPlain: '123456',
+    name: 'โรงเรียนเด็กเรียนดี',
+    province: 'จังหวัดตัวอย่าง',
+    educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1',
+    directorName: 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)',
+    phone: '02-000-0000',
+    email: 'dekreeandee_school@obec.mail.go.th',
+    studentCount: 180,
+    projectCount: 1,
+    totalBudget: 746600,
+    notes: 'สถานศึกษาเริ่มต้น พร้อมสำหรับการใช้งานจริง',
+  };
+  saveStoredSchools([defaultSchool]);
+  res.json({
+    success: true,
+    message: 'ล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมดเรียบร้อยแล้ว และตั้งค่า "โรงเรียนเด็กเรียนดี" เป็นโรงเรียนเริ่มต้น',
+    schools: [defaultSchool],
+  });
 });
 
 // Compatibility bridge for api/super_admin_api.php requests
@@ -738,9 +763,6 @@ app.all(['/api/super_admin_api.php', '/super_admin_api.php'], (req, res) => {
 
     case 'delete_school': {
       const schoolId = Number(req.body?.school_id || req.query.school_id);
-      if (schoolId === 1) {
-        return res.status(400).json({ success: false, message: 'ไม่อนุญาตให้ลบโรงเรียนหลักเริ่มต้น (ID 1)' });
-      }
       let schools = getStoredSchools();
       const initialLen = schools.length;
       schools = schools.filter((s: any) => s.id !== schoolId);
@@ -749,6 +771,34 @@ app.all(['/api/super_admin_api.php', '/super_admin_api.php'], (req, res) => {
       }
       saveStoredSchools(schools);
       return res.json({ success: true, message: 'ลบโรงเรียนออกจากระบบเรียบร้อยแล้ว' });
+    }
+
+    case 'purge_all_demo': {
+      const defaultSchool = {
+        id: 1,
+        schoolCode: '1000000001',
+        smisCode: '10000001',
+        isActive: true,
+        schoolKey: 'SCH-10000001',
+        adminUsername: 'admin',
+        adminPasswordPlain: '123456',
+        name: 'โรงเรียนเด็กเรียนดี',
+        province: 'จังหวัดตัวอย่าง',
+        educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1',
+        directorName: 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)',
+        phone: '02-000-0000',
+        email: 'dekreeandee_school@obec.mail.go.th',
+        studentCount: 180,
+        projectCount: 1,
+        totalBudget: 746600,
+        notes: 'สถานศึกษาเริ่มต้น พร้อมสำหรับการใช้งานจริง',
+      };
+      saveStoredSchools([defaultSchool]);
+      return res.json({
+        success: true,
+        message: 'ล้างข้อมูลโรงเรียนเดิมและข้อมูล Demo เก่าทั้งหมดเรียบร้อยแล้ว และตั้งค่า "โรงเรียนเด็กเรียนดี" เป็นโรงเรียนเริ่มต้น',
+        schools: [defaultSchool],
+      });
     }
 
     default:
